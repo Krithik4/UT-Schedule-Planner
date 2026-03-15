@@ -6,7 +6,7 @@ This is a local app that scrapes the UT course registrar and generates every val
 
 ## Download
 
-Click the green **Code** button at the top of this page, then **Download ZIP**. Extract it anywhere.
+Click the **Code** button at the top of this page, then **Download ZIP**. Extract it anywhere.
 
 ## Quick Start
 
