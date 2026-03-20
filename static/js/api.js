@@ -7,6 +7,11 @@ const API = {
         return res.json();
     },
 
+    async verifySession() {
+        const res = await fetch('/api/auth/verify', { method: 'POST' });
+        return res.json();
+    },
+
     async login() {
         const res = await fetch('/api/auth/login', { method: 'POST' });
         return res.json();

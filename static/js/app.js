@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyGradeDataToFilters();
             }
         } catch (e) {
-            console.warn('Grade data fetch failed:', e);
+            // Grade data is optional — silently degrade
         }
     }
 
@@ -483,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.title = 'View grade distribution';
                 btn.addEventListener('click', e => {
                     e.stopPropagation();
-                    showGradePopup(`${courseName} — All Instructors`, gradeInfo);
+                    showGradePopup(`${baseName} — All Instructors`, gradeInfo);
                 });
                 header.appendChild(btn);
             }
@@ -505,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.stopPropagation();
                         e.preventDefault();
                         const displayName = instrGrade.displayName || instrName;
-                        showGradePopup(`${courseName} — ${displayName}`, instrGrade);
+                        showGradePopup(`${baseName} — ${displayName}`, instrGrade);
                     });
                     // Insert before RMP link if present, else at end
                     const rmpLink = item.querySelector('.rmp-btn');
@@ -1534,7 +1534,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function validateSemesters() {
         try {
             const result = await API.getSemesters();
-            console.log('Semester validation result:', result);
             if (result.success && result.semesters.length > 0) {
                 const currentValue = semesterSelect.value;
                 semesterSelect.innerHTML = '';
@@ -1551,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTitle();
             }
         } catch (e) {
-            console.error('Semester validation failed:', e);
+            // Semester validation is best-effort
         }
     }
 
@@ -1565,13 +1564,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateBtn.click();
             }
         } else if (res.maybeAuthenticated) {
-            // Session data exists but not verified yet — show optimistic state.
-            // Chrome will launch and verify when the user clicks Generate.
+            // Session data exists — verify it in the background (also pre-launches Chrome)
             document.querySelector('.auth-dot').className = 'auth-dot connected';
-            document.getElementById('authText').textContent = 'Session saved';
+            document.getElementById('authText').textContent = 'Verifying session...';
             document.querySelector('.auth-panel-v2').classList.remove('needs-auth');
-            authHelp.textContent = 'Your previous login session was found.';
-            loginBtn.textContent = 'Connected';
+            authHelp.textContent = 'Checking your saved session...';
+            loginBtn.textContent = 'Verifying...';
+            loginBtn.disabled = true;
+
+            API.verifySession().then(result => {
+                if (result.authenticated) {
+                    setAuthStatus(true);
+                    authHelp.textContent = 'Session active from previous login.';
+                    loginBtn.textContent = 'Connected';
+                    loginBtn.disabled = false;
+                    if (CourseInput.getCourses().length > 0) {
+                        generateBtn.click();
+                    }
+                } else {
+                    setAuthStatus(false);
+                    authHelp.textContent = 'Previous session expired. Click to log in again.';
+                    loginBtn.textContent = 'Connect to UT';
+                    loginBtn.disabled = false;
+                }
+            }).catch(() => {
+                setAuthStatus(false);
+                authHelp.textContent = 'Could not verify session. Click to log in.';
+                loginBtn.textContent = 'Connect to UT';
+                loginBtn.disabled = false;
+            });
         }
     }).catch(() => {});
 });

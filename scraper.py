@@ -185,6 +185,20 @@ class Scraper:
             pass
 
     @staticmethod
+    def _minimize_browser(page):
+        """Minimize the Chrome window so it's out of the way."""
+        try:
+            cdp_session = page.context.new_cdp_session(page)
+            info = cdp_session.send("Browser.getWindowForTarget")
+            cdp_session.send("Browser.setWindowBounds", {
+                "windowId": info["windowId"],
+                "bounds": {"windowState": "minimized"},
+            })
+            cdp_session.detach()
+        except Exception:
+            pass
+
+    @staticmethod
     def _cmd_get_semesters(page):
         """Check which semester codes are valid by fetching each URL from the browser."""
         import datetime
@@ -240,6 +254,7 @@ class Scraper:
 
         if LOGIN_HOST not in current_url:
             log("Already authenticated!")
+            Scraper._minimize_browser(page)
             return True
 
         # Only bring browser to front when user actually needs to log in
@@ -265,6 +280,7 @@ class Scraper:
                 page.wait_for_timeout(2000)
                 final_url = page.url
                 log(f"Left login page. Final URL: {final_url}")
+                Scraper._minimize_browser(page)
                 return True
 
             if elapsed % 30 == 0:
@@ -383,6 +399,28 @@ class Scraper:
         """Ensure the Playwright thread and browser are running."""
         if not self._thread or not self._thread.is_alive():
             self._run_on_pw_thread(lambda page: None)
+
+    def verify_session(self):
+        """Launch browser and check if the saved session is still valid.
+        Does NOT wait for the user to log in — just returns True/False."""
+        try:
+            is_valid = self._run_on_pw_thread(self._cmd_verify_session)
+            self._authenticated = is_valid
+            return is_valid
+        except Exception as e:
+            log(f"Session verification error: {e}")
+            self._authenticated = False
+            return False
+
+    @staticmethod
+    def _cmd_verify_session(page):
+        """Navigate to registrar and check if session redirects to login."""
+        page.goto(_semester_url(), wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(1500)
+        is_valid = LOGIN_HOST not in page.url
+        if is_valid:
+            Scraper._minimize_browser(page)
+        return is_valid
 
     def wait_for_login(self, timeout_seconds=180):
         try:

@@ -28,6 +28,13 @@ if %errorlevel% neq 0 (
     playwright install chromium
 )
 
+:: Check if server is already running
+powershell -Command "(Invoke-WebRequest -Uri http://localhost:5000 -UseBasicParsing -TimeoutSec 2).StatusCode" >nul 2>&1
+if %errorlevel% equ 0 (
+    start http://localhost:5000
+    exit /b 0
+)
+
 :: Open browser after a 2-second delay (non-blocking)
 start /b "" pythonw -c "import time,webbrowser;time.sleep(2);webbrowser.open('http://localhost:5000')"
 

@@ -38,6 +38,19 @@ def auth_status():
     })
 
 
+@app.route("/api/auth/verify", methods=["POST"])
+def auth_verify():
+    """Launch browser and verify saved session without waiting for login."""
+    log("Verifying saved session...")
+    try:
+        is_valid = scraper.verify_session()
+        log(f"Session verification: {'valid' if is_valid else 'expired'}")
+        return jsonify({"authenticated": is_valid})
+    except Exception as e:
+        log(f"Verification error: {e}")
+        return jsonify({"authenticated": False, "error": str(e)}), 500
+
+
 @app.route("/api/auth/login", methods=["POST"])
 def auth_login():
     """Launch Chrome and wait for UT login."""
@@ -203,7 +216,9 @@ def debug_raw_html():
 if __name__ == "__main__":
     # Pre-download grade database in background so first lookup is fast
     import threading
+    import atexit
     threading.Thread(target=ensure_db, daemon=True).start()
+    atexit.register(scraper.close)
     log("Starting Schedule Planner...")
     log("Open http://localhost:5000 in your browser")
-    app.run(debug=True, port=5000, use_reloader=True, threaded=True)
+    app.run(port=5000, threaded=True)
